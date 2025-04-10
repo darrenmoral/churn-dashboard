@@ -10,11 +10,17 @@ model = joblib.load('churn_model.pkl')
 features = joblib.load('model_features.pkl')
 dataset = pd.read_csv('CustomerData.csv')
 
-# Ensure all required feature columns are in dataset
-for col in features:
-    if col not in dataset.columns:
-        dataset[col] = 0
-X = dataset[features]
+# Ensure required columns and correct order
+def prepare_features(df, features):
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
+    df = df[features].copy()
+    # Convert all to numeric if needed
+    df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
+    return df
+
+X = prepare_features(dataset, features)
 
 # Predictions
 dataset['Churn Probability'] = model.predict_proba(X)[:, 1]
