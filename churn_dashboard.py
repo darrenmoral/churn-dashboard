@@ -3,91 +3,85 @@ import pandas as pd
 import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
-st.set_page_config(page_title="Customer Churn Dashboard", layout="wide")
+# Load model and metadata
+model = joblib.load('churn_model.pkl')
+features = joblib.load('model_features.pkl')
+dataset = pd.read_csv('CustomerData.csv')
+
+# Ensure all required feature columns are in dataset
+for col in features:
+    if col not in dataset.columns:
+        dataset[col] = 0
+X = dataset[features]
+
+# Predictions
+dataset['Churn Probability'] = model.predict_proba(X)[:, 1]
+dataset['Predicted Churn'] = model.predict(X)
+
+# Title
 st.title("📊 Customer Churn Dashboard")
 
-# Load assets
-@st.cache_resource
-def load_model():
-    return joblib.load("churn_model.pkl")
+# Section 1: Model Performance Metrics
+st.subheader("📈 Model Evaluation")
+y_true = (dataset['Churn'] == 'Yes').astype(int)
+y_pred = dataset['Predicted Churn']
 
-@st.cache_data
-def load_data():
-    return pd.read_csv("CustomerData.csv")
+accuracy = accuracy_score(y_true, y_pred)
+precision = precision_score(y_true, y_pred, zero_division=0)
+recall = recall_score(y_true, y_pred, zero_division=0)
+f1 = f1_score(y_true, y_pred, zero_division=0)
 
-@st.cache_data
-def load_features():
-    return joblib.load("model_features.pkl")
+st.metric("Accuracy", f"{accuracy:.2%}")
+st.metric("Precision", f"{precision:.2%}")
+st.metric("Recall", f"{recall:.2%}")
+st.metric("F1 Score", f"{f1:.2%}")
 
-try:
-    model = load_model()
-    dataset = load_data()
-    features = load_features()
+# Confusion Matrix
+st.subheader("🧮 Confusion Matrix")
+conf_matrix = confusion_matrix(y_true, y_pred)
+fig_cm, ax_cm = plt.subplots()
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["No Churn", "Churn"], yticklabels=["No Churn", "Churn"], ax=ax_cm)
+ax_cm.set_xlabel("Predicted")
+ax_cm.set_ylabel("Actual")
+st.pyplot(fig_cm)
 
-    # Validate columns
-    missing_cols = [col for col in features if col not in dataset.columns]
-    if missing_cols:
-        st.error(f"❌ Missing columns in dataset: {missing_cols}")
-        st.stop()
+# Section 2: Churn Risk
+st.subheader("🔥 Top Customers at Risk of Churn")
+top_risk = dataset[['customerID', 'Churn Probability']].sort_values(by='Churn Probability', ascending=False).head(10)
+st.dataframe(top_risk)
 
-    # Preprocessing and predictions
-    X = dataset[features]
-    dataset['Churn Probability'] = model.predict_proba(X)[:, 1]
-    dataset['Predicted Churn'] = model.predict(X)
+fig, ax = plt.subplots(figsize=(8, 5))
+sns.barplot(data=top_risk, x='Churn Probability', y='customerID', palette='Reds_r', ax=ax)
+ax.set_title("Top 10 At-Risk Customers")
+st.pyplot(fig)
 
-    # ✅ Section 1: Model Accuracy
-    st.subheader("📈 Model Performance Metrics")
-    if 'Churn' in dataset.columns:
-        true_labels = dataset['Churn'].apply(lambda x: 1 if x == 'Yes' else 0)
-        accuracy = (dataset['Predicted Churn'] == true_labels).mean()
-        st.metric("Accuracy", f"{accuracy:.2%}")
-    else:
-        st.warning("⚠️ 'Churn' column not found — skipping accuracy metric.")
+# Section 3: Feature Importance
+st.subheader("💡 Feature Importance")
+importances = model.feature_importances_
+importance_df = pd.DataFrame({'Feature': features, 'Importance': importances}).sort_values(by='Importance', ascending=False)
+fig2, ax2 = plt.subplots()
+sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), ax=ax2)
+st.pyplot(fig2)
 
-    # ✅ Section 2: Top Churn Risks
-    st.subheader("🔥 Top Customers at Risk of Churn")
-    top_risk = dataset[['customerID', 'Churn Probability']].sort_values(
-        by='Churn Probability', ascending=False).head(10)
-    st.dataframe(top_risk)
+# Section 4: Upload for Prediction
+st.subheader("📥 Predict New Customers")
+uploaded = st.file_uploader("Upload a CSV file with customer data", type="csv")
+if uploaded:
+    new_data = pd.read_csv(uploaded)
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(data=top_risk, x='Churn Probability', y='customerID', hue='Churn Probability',
-                dodge=False, palette='Reds_r', legend=False, ax=ax)
-    ax.set_title("Top 10 At-Risk Customers")
-    st.pyplot(fig)
+    # Handle missing one-hot columns
+    for col in features:
+        if col not in new_data.columns:
+            new_data[col] = 0
+    new_data = new_data[features]
 
-    # ✅ Section 3: Feature Importance
-    st.subheader("💡 Feature Importance")
-    if hasattr(model, 'feature_importances_'):
-        importances = model.feature_importances_
-        importance_df = pd.DataFrame({
-            'Feature': features,
-            'Importance': importances
-        }).sort_values(by='Importance', ascending=False)
+    # Predict
+    predictions = model.predict(new_data)
+    probabilities = model.predict_proba(new_data)[:, 1]
+    new_data['Churn Prediction'] = predictions
+    new_data['Churn Probability'] = probabilities
 
-        fig2, ax2 = plt.subplots()
-        sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), ax=ax2)
-        ax2.set_title("Top 10 Important Features")
-        st.pyplot(fig2)
-    else:
-        st.warning("⚠️ Feature importances not available for this model.")
-
-    # ✅ Section 4: Upload for Predictions
-    st.subheader("📥 Predict New Customers")
-    uploaded = st.file_uploader("Upload a CSV file with customer data", type="csv")
-
-    if uploaded:
-        try:
-            new_data = pd.read_csv(uploaded)
-            new_data = new_data.reindex(columns=features, fill_value=0)
-            new_data['Churn Prediction'] = model.predict(new_data)
-            new_data['Churn Probability'] = model.predict_proba(new_data)[:, 1]
-            st.dataframe(new_data[['Churn Prediction', 'Churn Probability'] + features])
-        except Exception as e:
-            st.error(f"Error processing uploaded file: {e}")
-
-except FileNotFoundError as e:
-    st.error("❌ Required file not found. Ensure churn_model.pkl, model_features.pkl, and CustomerData.csv are in the same directory.")
-except Exception as e:
-    st.error(f"⚠️ Unexpected error: {e}")
+    st.subheader("📋 Prediction Results")
+    st.dataframe(new_data[['Churn Prediction', 'Churn Probability'] + features])
