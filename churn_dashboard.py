@@ -31,7 +31,7 @@ st.title("📊 Customer Churn Dashboard")
 
 # Section 1: Model Performance Metrics
 st.subheader("📈 Model Evaluation")
-y_true = (dataset['Churn'] == 'Yes').astype(int)
+y_true = (dataset['Churn'].map({'Yes': 1, 'No': 0})
 y_pred = dataset['Predicted Churn']
 
 accuracy = accuracy_score(y_true, y_pred)
