@@ -27,34 +27,39 @@ dataset['Churn Probability'] = model.predict_proba(X)[:, 1]
 dataset['Predicted Churn'] = model.predict(X)
 
 # Title
-st.title("📊 Customer Churn Dashboard")
+st.title("Customer Churn Dashboard")
 
-# Section 1: Model Performance Metrics
-st.subheader("📈 Model Evaluation")
-y_true = (dataset['Churn'].map({'Yes': 1, 'No': 0}))
-y_pred = dataset['Predicted Churn']
+# Section: Show data
+@st.cache_data
+def load_data(path: str):
+    data = pd.read_csv('CustomerData.csv')
+    return data
 
-accuracy = accuracy_score(y_true, y_pred)
-precision = precision_score(y_true, y_pred, zero_division=0)
-recall = recall_score(y_true, y_pred, zero_division=0)
-f1 = f1_score(y_true, y_pred, zero_division=0)
+st.subheader("Customer Data")
+df = load_data('CustomerData.csv')
+st.write(df)
 
-st.metric("Accuracy", f"{accuracy:.2%}")
-st.metric("Precision", f"{precision:.2%}")
-st.metric("Recall", f"{recall:.2%}")
-st.metric("F1 Score", f"{f1:.2%}")
+# Section: Tenure Distribution Histogram (Descriptive Visualization)
+st.subheader("Tenure Distribution: Churned vs Not Churned")
 
-# Confusion Matrix
-st.subheader("🧮 Confusion Matrix")
-conf_matrix = confusion_matrix(y_true, y_pred)
-fig_cm, ax_cm = plt.subplots()
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=["No Churn", "Churn"], yticklabels=["No Churn", "Churn"], ax=ax_cm)
-ax_cm.set_xlabel("Predicted")
-ax_cm.set_ylabel("Actual")
-st.pyplot(fig_cm)
+fig3, ax3 = plt.subplots(figsize=(10, 6))
+df_churned = dataset[dataset['Churn'] == 'Yes']
+df_not_churned = dataset[dataset['Churn'] == 'No']
+
+ax3.hist(df_not_churned['tenure'], bins=20, alpha=0.7, label='Not Churned', edgecolor='black')
+ax3.hist(df_churned['tenure'], bins=20, alpha=0.7, label='Churned', edgecolor='black')
+
+ax3.set_title("Tenure Distribution by Churn")
+ax3.set_xlabel("Tenure (months)")
+ax3.set_ylabel("Number of Customers")
+ax3.legend()
+st.pyplot(fig3)
+
+y_true = dataset['Churn'].map({'Yes': 1, 'No': 0})
+y_pred = dataset['Predicted Churn'].map({'Yes': 1, 'No': 0})
 
 # Section 2: Churn Risk
-st.subheader("🔥 Top Customers at Risk of Churn")
+st.subheader("Top Customers at Risk of Churn")
 top_risk = dataset[['customerID', 'Churn Probability']].sort_values(by='Churn Probability', ascending=False).head(10)
 st.dataframe(top_risk)
 
@@ -64,7 +69,7 @@ ax.set_title("Top 10 At-Risk Customers")
 st.pyplot(fig)
 
 # Section 3: Feature Importance
-st.subheader("💡 Feature Importance")
+st.subheader("Feature Importance")
 importances = model.feature_importances_
 importance_df = pd.DataFrame({'Feature': features, 'Importance': importances}).sort_values(by='Importance', ascending=False)
 fig2, ax2 = plt.subplots()
@@ -72,7 +77,7 @@ sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), ax=ax2)
 st.pyplot(fig2)
 
 # Section 4: Upload for Prediction
-st.subheader("📥 Predict New Customers")
+st.subheader("Predict New Customers")
 uploaded = st.file_uploader("Upload a CSV file with customer data", type="csv")
 if uploaded:
     new_data = pd.read_csv(uploaded)
