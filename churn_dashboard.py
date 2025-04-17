@@ -75,3 +75,25 @@ importance_df = pd.DataFrame({'Feature': features, 'Importance': importances}).s
 fig2, ax2 = plt.subplots()
 sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), ax=ax2)
 st.pyplot(fig2)
+
+# Upload Files For Prediction
+st.subheader("Predict New Customers")
+uploaded = st.file_uploader("Upload a CSV file with customer data", type="csv")
+if uploaded:
+    new_data = pd.read_csv(uploaded)
+
+    # Handle missing one-hot columns
+    for col in features:
+        if col not in new_data.columns:
+            new_data[col] = 0
+    new_data = new_data[features]
+
+    # Predict
+    predictions = model.predict(new_data)
+    probabilities = model.predict_proba(new_data)[:, 1]
+    new_data['Churn Prediction'] = predictions
+    new_data['Churn Probability'] = probabilities
+
+    st.subheader("📋 Prediction Results")
+    st.dataframe(new_data[['Churn Prediction', 'Churn Probability'] + features])
+
