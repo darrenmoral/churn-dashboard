@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 # Load model and metadata
 model = joblib.load('churn_model.pkl')
 features = joblib.load('model_features.pkl')
-dataset = pd.read_csv('CustomerData.csv')
+dataset = pd.read_csv('NewCustomerData1.csv')
 
 # Ensure required columns and correct order
 def prepare_features(df, features):
