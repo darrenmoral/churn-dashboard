@@ -1,3 +1,5 @@
+# Parts of the code were inspired by the Streamlit Dashboard referenced in the report (Andrianasolo, 2023).
+
 import streamlit as st
 import pandas as pd
 import joblib
