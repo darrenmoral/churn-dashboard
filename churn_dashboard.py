@@ -29,7 +29,7 @@ dataset['Churn Probability'] = model.predict_proba(X)[:, 1]
 dataset['Predicted Churn'] = model.predict(X)
 
 # Title
-st.title("Customer Churn Dashboard")
+st.title("📊 Customer Churn Dashboard")
 
 # Show data
 @st.cache_data
