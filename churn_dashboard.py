@@ -42,7 +42,7 @@ df = load_data('CustomerData.csv')
 st.write(df)
 
 # Tenure Distribution Histogram (Descriptive Visualization)
-st.subheader("Tenure Distribution: Churned vs Not Churned")
+st.subheader("🕛 Tenure Distribution: Churned vs Not Churned")
 
 fig3, ax3 = plt.subplots(figsize=(10, 6))
 df_churned = dataset[dataset['Churn'] == 'Yes']
@@ -61,7 +61,7 @@ y_true = dataset['Churn'].map({'Yes': 1, 'No': 0})
 y_pred = dataset['Predicted Churn'].map({'Yes': 1, 'No': 0})
 
 # Churn Risk
-st.subheader("Top Customers at Risk of Churn")
+st.subheader("🔥 Top Customers at Risk of Churn")
 top_risk = dataset[['customerID', 'Churn Probability']].sort_values(by='Churn Probability', ascending=False).head(10)
 st.dataframe(top_risk)
 
@@ -71,9 +71,30 @@ ax.set_title("Top 10 At-Risk Customers")
 st.pyplot(fig)
 
 # Feature Importance
-st.subheader("Feature Importance")
+st.subheader("💡 Feature Importance")
 importances = model.feature_importances_
 importance_df = pd.DataFrame({'Feature': features, 'Importance': importances}).sort_values(by='Importance', ascending=False)
 fig2, ax2 = plt.subplots()
 sns.barplot(x='Importance', y='Feature', data=importance_df.head(10), ax=ax2)
 st.pyplot(fig2)
+
+# Upload for Prediction
+st.subheader("📥 Predict New Customers")
+uploaded = st.file_uploader("Upload a CSV file with customer data", type="csv")
+if uploaded:
+    new_data = pd.read_csv(uploaded)
+
+    # Handle missing one-hot columns
+    for col in features:
+        if col not in new_data.columns:
+            new_data[col] = 0
+    new_data = new_data[features]
+
+    # Predict
+    predictions = model.predict(new_data)
+    probabilities = model.predict_proba(new_data)[:, 1]
+    new_data['Churn Prediction'] = predictions
+    new_data['Churn Probability'] = probabilities
+
+    st.subheader("📋 Prediction Results")
+    st.dataframe(new_data[['Churn Prediction', 'Churn Probability'] + features])
